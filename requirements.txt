@@ -1,0 +1,10 @@
+django==4.2
+djangorestframework
+psycopg2-binary
+pgvector
+python-dotenv
+ollama
+redis
+streamlit
+requests
+numpy
