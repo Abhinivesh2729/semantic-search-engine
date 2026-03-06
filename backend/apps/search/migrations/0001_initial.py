@@ -20,8 +20,6 @@ class Migration(migrations.Migration):
             ],
             options={'db_table': 'documents'},
         ),
-        migrations.RunSQL(
-            "CREATE INDEX IF NOT EXISTS documents_embedding_idx ON documents USING ivfflat (embedding vector_cosine_ops) WITH (lists = 20)",
-            migrations.RunSQL.noop,
-        ),
+        # Note: IVFFlat index is omitted here — exact cosine scan is used instead.
+        # For datasets over 1M rows, add: CREATE INDEX USING hnsw (embedding vector_cosine_ops)
     ]
