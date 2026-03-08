@@ -1,4 +1,5 @@
 import time
+from django.db.models import Case, IntegerField, Q, Value, When
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from pgvector.django import CosineDistance
@@ -13,14 +14,22 @@ def keyword_search(request):
     if not query:
         return Response({'error': 'Query parameter q is required'}, status=400)
 
-    cached = get_cached(query, 'keyword')
+    cache_key = 'keyword_v2'
+    cached = get_cached(query, cache_key)
     if cached:
         return Response({'results': cached, 'cached': True})
 
     start = time.time()
     docs = Document.objects.filter(
-        content__icontains=query
-    ).values('id', 'title', 'content', 'category')[:10]
+        Q(title__icontains=query) | Q(content__icontains=query)
+    ).annotate(
+        match_priority=Case(
+            When(title__iexact=query, then=Value(0)),
+            When(title__icontains=query, then=Value(1)),
+            default=Value(2),
+            output_field=IntegerField(),
+        )
+    ).order_by('match_priority', 'title').values('id', 'title', 'content', 'category')[:10]
 
     results = []
     for doc in docs:
@@ -32,7 +41,7 @@ def keyword_search(request):
         })
 
     elapsed = round((time.time() - start) * 1000)
-    set_cached(query, 'keyword', results)
+    set_cached(query, cache_key, results)
     return Response({'results': results, 'cached': False, 'time_ms': elapsed})
 
 
